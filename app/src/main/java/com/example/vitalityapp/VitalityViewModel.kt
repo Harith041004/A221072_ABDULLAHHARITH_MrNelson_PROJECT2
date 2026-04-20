@@ -1,78 +1,36 @@
 package com.example.vitalityapp
 
+import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
-import java.text.SimpleDateFormat
-import java.util.*
+import kotlinx.coroutines.flow.*
 
-data class ProfileState(
-    val name: String = "Abdullah Harith",
-    val matric: String = "A221072",
-    val status: String = "Software Engineering Student",
-    val streak: String = "15",
-    val avgScore: String = "72"
-)
-
-data class JournalEntry(
-    val date: String,
-    val content: String,
-    val mood: String
-)
-
-data class Habit(
-    val id: String,
-    val name: String,
-    val emoji: String,
-    var value: Int,
-    val goal: Int,
-    val unit: String,
-    val color: androidx.compose.ui.graphics.Color
-)
+data class ProfileState(val name: String = "Abdullah Harith", val matric: String = "A221072", val streak: String = "15", val avgScore: String = "72")
+data class JournalEntry(val date: String, val content: String, val mood: String)
+data class Habit(val id: String, val name: String, val emoji: String, val value: Int, val goal: Int, val unit: String, val color: Color)
 
 class VitalityViewModel : ViewModel() {
     private val _profile = MutableStateFlow(ProfileState())
-    val profile: StateFlow<ProfileState> = _profile.asStateFlow()
+    val profile = _profile.asStateFlow()
 
-    private val _journalEntries = MutableStateFlow(listOf(
-        JournalEntry("Oct 24, 2024", "Started my vitality journey today!", "😊"),
-        JournalEntry("Oct 23, 2024", "Feeling great after a long walk.", "🌟")
+    private val _journalEntries = MutableStateFlow(listOf(JournalEntry("Oct 24, 2024", "Started my journey!", "😊")))
+    val journalEntries = _journalEntries.asStateFlow()
+
+    private val _habits = MutableStateFlow(listOf(
+        Habit("move", "Steps", "🏃", 15, 25, "k", Color(0xFF2196F3)),
+        Habit("nutri", "Water", "🥗", 20, 25, "gls", Color(0xFF009688))
     ))
-    val journalEntries: StateFlow<List<JournalEntry>> = _journalEntries.asStateFlow()
+    val habits = _habits.asStateFlow()
 
-    private val _habits = MutableStateFlow(getDefaultHabits())
-    val habits: StateFlow<List<Habit>> = _habits.asStateFlow()
-
-    private val _dailyScore = MutableStateFlow(72) // Initial calculated score
-    val dailyScore: StateFlow<Int> = _dailyScore.asStateFlow()
-
-    fun addJournalEntry(content: String, mood: String) {
-        val date = SimpleDateFormat("MMM d, yyyy", Locale.getDefault()).format(Date())
-        val newEntry = JournalEntry(date, content, mood)
-        _journalEntries.update { listOf(newEntry) + it }
-    }
+    private val _dailyScore = MutableStateFlow(72)
+    val dailyScore = _dailyScore.asStateFlow()
 
     fun updateHabitValue(id: String, newValue: Int) {
-        _habits.update { currentHabits ->
-            currentHabits.map { habit ->
-                if (habit.id == id) habit.copy(value = newValue) else habit
-            }
-        }
-        calculateScore()
+        _habits.update { current -> current.map { if (it.id == id) it.copy(value = newValue) else it } }
+        _dailyScore.value = (_habits.value.sumOf { (it.value.toFloat() / it.goal * 25).toInt() }).coerceIn(0, 100)
     }
 
-    private fun calculateScore() {
-        val habits = _habits.value
-        val total = habits.sumOf { (it.value.toFloat() / it.goal.toFloat() * 25).toInt() }
-        _dailyScore.value = total.coerceIn(0, 100)
+    fun addJournalEntry(content: String, mood: String) {
+        val date = java.text.SimpleDateFormat("MMM d, yyyy", java.util.Locale.getDefault()).format(java.util.Date())
+        _journalEntries.update { listOf(JournalEntry(date, content, mood)) + it }
     }
 }
-
-fun getDefaultHabits(): List<Habit> = listOf(
-    Habit("movement", "Steps", "🏃", 15, 25, "k steps", androidx.compose.ui.graphics.Color(0xFF2196F3)),
-    Habit("nutrition", "Water", "🥗", 20, 25, "glasses", androidx.compose.ui.graphics.Color(0xFF009688)),
-    Habit("sleep", "Sleep", "😴", 12, 25, "hours", androidx.compose.ui.graphics.Color(0xFF6750A4)),
-    Habit("mood", "Meditation", "🧘", 18, 25, "mins", androidx.compose.ui.graphics.Color(0xFFE91E63))
-)
