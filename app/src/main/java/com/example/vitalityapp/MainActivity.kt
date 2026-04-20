@@ -8,6 +8,7 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -17,6 +18,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.MenuBook
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
@@ -31,6 +34,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
 import com.example.vitalityapp.ui.theme.VitalityAppTheme
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -52,6 +60,402 @@ class MainActivity : ComponentActivity() {
 }
 
 // ============================================
+// NAVIGATION
+// ============================================
+
+sealed class Screen(val route: String) {
+    object Home : Screen("home")
+    object Insights : Screen("insights")
+    object Library : Screen("library")
+    object Journal : Screen("journal")
+    object Profile : Screen("profile")
+}
+
+@Composable
+fun VitalityApp(dataStoreManager: DataStoreManager, viewModel: VitalityViewModel = androidx.lifecycle.viewmodel.compose.viewModel()) {
+    val navController = rememberNavController()
+    
+    // Track current route for the bottom bar selection
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
+
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        containerColor = SurfaceLight,
+        bottomBar = {
+            VitalityBottomBar(currentRoute) { route ->
+                navController.navigate(route) {
+                    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                    launchSingleTop = true
+                    restoreState = true
+                }
+            }
+        }
+    ) { innerPadding ->
+        NavHost(
+            navController = navController,
+            startDestination = Screen.Home.route,
+            modifier = Modifier.padding(innerPadding)
+        ) {
+            composable(Screen.Home.route) { HomeScreen(dataStoreManager) }
+            composable(Screen.Insights.route) { InsightsScreen() }
+            composable(Screen.Library.route) { LibraryScreen() }
+            composable(Screen.Journal.route) { JournalScreen(viewModel) }
+            composable(Screen.Profile.route) { ProfileScreen(viewModel) }
+        }
+    }
+}
+
+@Composable
+fun VitalityBottomBar(currentRoute: String?, onNavigate: (String) -> Unit) {
+    val tabs = listOf(
+        Triple("Home", Icons.Default.Home, Screen.Home.route),
+        Triple("Insights", Icons.Default.Insights, Screen.Insights.route),
+        Triple("Library", Icons.AutoMirrored.Filled.MenuBook, Screen.Library.route),
+        Triple("Journal", Icons.Default.EditNote, Screen.Journal.route),
+        Triple("Profile", Icons.Default.Person, Screen.Profile.route)
+    )
+
+    NavigationBar(containerColor = CardWhite, tonalElevation = 8.dp) {
+        tabs.forEach { (label, icon, route) ->
+            NavigationBarItem(
+                selected = currentRoute == route,
+                onClick = { onNavigate(route) },
+                icon = { Icon(icon, label) },
+                label = { Text(label, fontSize = 11.sp) },
+                colors = NavigationBarItemDefaults.colors(
+                    selectedIconColor = VitalityPurple,
+                    indicatorColor = VitalityPurple.copy(alpha = 0.1f)
+                )
+            )
+        }
+    }
+}
+
+// ============================================
+// SCREENS
+// ============================================
+
+@Composable
+fun LibraryScreen() {
+    ScreenPlaceholder("Library Screen")
+}
+
+@Composable
+fun InsightsScreen() {
+    val weeklyData = listOf(
+        60, 72, 65, 80, 75, 68, 82
+    )
+    
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp)
+    ) {
+        Text(text = "Insights", fontSize = 28.sp, fontWeight = FontWeight.Bold)
+        Text(text = "Your progress this week", fontSize = 14.sp, color = TextSecondary)
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        // Weekly Summary Card
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = VitalityPurple)
+        ) {
+            Column(modifier = Modifier.padding(20.dp)) {
+                Text("Weekly Average", color = Color.White.copy(0.8f), fontSize = 14.sp)
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Text("72", color = Color.White, fontSize = 48.sp, fontWeight = FontWeight.Bold)
+                    Text("/100", color = Color.White.copy(0.6f), fontSize = 20.sp, modifier = Modifier.padding(bottom = 8.dp, start = 4.dp))
+                    Spacer(modifier = Modifier.weight(1f))
+                    Column(horizontalAlignment = Alignment.End) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.AutoMirrored.Filled.TrendingUp, null, tint = SuccessGreen, modifier = Modifier.size(20.dp))
+                            Text("+8%", color = SuccessGreen, fontWeight = FontWeight.Bold)
+                        }
+                        Text("vs last week", color = Color.White.copy(0.6f), fontSize = 12.sp)
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Bar Chart Representation
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    listOf("M", "T", "W", "T", "F", "S", "S").forEachIndexed { index, day ->
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Box(modifier = Modifier
+                                .width(24.dp)
+                                .height((weeklyData[index] * 0.8f).dp)
+                                .background(Color.White.copy(alpha = if (index == 6) 1f else 0.5f), RoundedCornerShape(4.dp))
+                            )
+                            Text(day, color = Color.White.copy(0.7f), fontSize = 12.sp)
+                        }
+                    }
+                }
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        Text("Metric Breakdown", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+        Spacer(modifier = Modifier.height(12.dp))
+        
+        InsightMetricCard("🏃 Movement", 17, 25, "+3 from last week", VitalityBlue)
+        InsightMetricCard("🥗 Nutrition", 21, 25, "+2 from last week", VitalityTeal)
+        InsightMetricCard("😴 Sleep", 15, 25, "Same as last week", VitalityPurple)
+        InsightMetricCard("🧘 Mood", 19, 25, "+3 from last week", VitalityPink)
+    }
+}
+
+@Composable
+fun InsightMetricCard(label: String, score: Int, max: Int, trend: String, color: Color) {
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = CardWhite),
+        elevation = CardDefaults.cardElevation(2.dp)
+    ) {
+        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(label, fontWeight = FontWeight.Bold)
+                Text(trend, fontSize = 12.sp, color = TextSecondary)
+            }
+            Text("$score/$max", fontWeight = FontWeight.Bold, color = color, fontSize = 18.sp)
+        }
+    }
+}
+
+@Composable
+fun JournalScreen(viewModel: VitalityViewModel) {
+    var currentNote by remember { mutableStateOf("") }
+    var selectedMood by remember { mutableStateOf("") }
+    val entries by viewModel.journalEntries.collectAsStateWithLifecycle()
+
+    Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
+        Text("Journal", fontSize = 28.sp, fontWeight = FontWeight.Bold)
+        Text("Track your thoughts and feelings", fontSize = 14.sp, color = TextSecondary)
+        
+        Spacer(modifier = Modifier.height(20.dp))
+
+        // New Entry Card
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = CardWhite)
+        ) {
+            Column(modifier = Modifier.padding(20.dp)) {
+                Text("How are you feeling?", fontWeight = FontWeight.SemiBold)
+                Row(modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                    val moods = listOf("😊", "🌟", "😴", "🧘", "💪")
+                    moods.forEach { mood ->
+                        MoodButton(mood, isSelected = selectedMood == mood) { selectedMood = mood }
+                    }
+                }
+
+                OutlinedTextField(
+                    value = currentNote,
+                    onValueChange = { currentNote = it },
+                    modifier = Modifier.fillMaxWidth().height(120.dp),
+                    label = { Text("Write your thoughts...") },
+                    shape = RoundedCornerShape(12.dp)
+                )
+                
+                Button(
+                    onClick = {
+                        viewModel.addJournalEntry(currentNote, selectedMood)
+                        currentNote = ""
+                        selectedMood = ""
+                    },
+                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                    enabled = currentNote.isNotBlank() && selectedMood.isNotBlank()
+                ) { Text("Save Entry") }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+        Text("Past Entries", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+        Spacer(modifier = Modifier.height(12.dp))
+        
+        entries.forEach { entry ->
+            JournalEntryCard(entry)
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+    }
+}
+
+@Composable
+fun MoodButton(emoji: String, isSelected: Boolean, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(60.dp, 40.dp)
+            .border(
+                width = 1.dp,
+                color = if (isSelected) VitalityPurple else Color.LightGray,
+                shape = RoundedCornerShape(8.dp)
+            )
+            .background(
+                color = if (isSelected) VitalityPurple.copy(alpha = 0.1f) else Color.Transparent,
+                shape = RoundedCornerShape(8.dp)
+            )
+            .clickable { onClick() },
+        contentAlignment = Alignment.Center
+    ) {
+        Text(emoji, fontSize = 20.sp)
+    }
+}
+
+@Composable
+fun JournalEntryCard(entry: JournalEntry) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = CardWhite),
+        elevation = CardDefaults.cardElevation(2.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text(entry.date, fontSize = 12.sp, color = TextSecondary)
+                Box(modifier = Modifier.size(32.dp).background(VitalityPurple.copy(0.05f), CircleShape), contentAlignment = Alignment.Center) {
+                    Text(entry.mood)
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(entry.content, fontSize = 15.sp)
+        }
+    }
+}
+
+@Composable
+fun ProfileScreen(viewModel: VitalityViewModel) {
+    val profile by viewModel.profile.collectAsStateWithLifecycle()
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp)
+    ) {
+        Text(text = "Profile", fontSize = 28.sp, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        // Profile Header Card
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = CardWhite),
+            elevation = CardDefaults.cardElevation(2.dp)
+        ) {
+            Column(modifier = Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Box(modifier = Modifier.size(80.dp).background(VitalityPurple, CircleShape), contentAlignment = Alignment.Center) {
+                    Text(text = profile.name.take(1), color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.Bold)
+                }
+                
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(text = profile.name, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Text(text = "Member since Jan 2024", fontSize = 14.sp, color = TextSecondary)
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                    StatItem("🔥", profile.streak, "Day Streak")
+                    StatItem("📊", profile.avgScore, "Avg Score")
+                    StatItem("🏆", "8", "Badges")
+                }
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        Text("Achievements", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+        Spacer(modifier = Modifier.height(12.dp))
+        
+        getAchievements().chunked(3).forEach { row ->
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                row.forEach { achievement ->
+                    AchievementGridItem(achievement)
+                }
+                if (row.size < 3) {
+                    repeat(3 - row.size) { 
+                        Spacer(modifier = Modifier.weight(1f)) 
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+        }
+        
+        Text("Settings", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+        Spacer(modifier = Modifier.height(12.dp))
+        Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(CardWhite)) {
+            Column {
+                SettingsItem("🔔", "Notifications", "Reminders and alerts")
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                SettingsItem("🎨", "Appearance", "Theme and display")
+            }
+        }
+    }
+}
+
+@Composable
+fun RowScope.AchievementGridItem(achievement: Achievement) {
+    Card(
+        modifier = Modifier.width(0.dp).weight(1f).aspectRatio(1f),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = if (achievement.isUnlocked) CardWhite else Color.Gray.copy(0.1f))
+    ) {
+        Column(modifier = Modifier.fillMaxSize().padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+            Text(text = if (achievement.isUnlocked) achievement.emoji else "🔒", fontSize = 28.sp)
+            Text(text = achievement.title, fontSize = 10.sp, fontWeight = FontWeight.Medium, textAlign = TextAlign.Center)
+        }
+    }
+}
+
+@Composable
+fun SettingsItem(emoji: String, title: String, subtitle: String) {
+    Row(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(emoji, fontSize = 24.sp)
+        Spacer(modifier = Modifier.width(16.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(title, fontWeight = FontWeight.Bold)
+            Text(subtitle, fontSize = 12.sp, color = TextSecondary)
+        }
+        Icon(Icons.Default.ChevronRight, null, tint = TextSecondary)
+    }
+}
+
+data class Achievement(val title: String, val emoji: String, val isUnlocked: Boolean)
+fun getAchievements() = listOf(
+    Achievement("First Goal", "🎯", true),
+    Achievement("7 Day Streak", "⚡", true),
+    Achievement("Early Bird", "🌅", true),
+    Achievement("Night Owl", "🌙", false),
+    Achievement("Pro Athlete", "🏅", false)
+)
+
+@Composable
+fun StatItem(emoji: String, value: String, label: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(emoji, fontSize = 24.sp)
+        Text(value, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+        Text(label, fontSize = 12.sp, color = TextSecondary)
+    }
+}
+
+@Composable
+fun ProfileStat(label: String, value: String) {
+    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(label, color = TextSecondary)
+        Text(value, fontWeight = FontWeight.Bold)
+    }
+}
+
+@Composable
+fun ScreenPlaceholder(name: String) {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Text(name, style = MaterialTheme.typography.headlineMedium)
+    }
+}
+
+// ============================================
 // DATA CLASSES
 // ============================================
 
@@ -63,65 +467,6 @@ data class MetricData(
     val maxScore: Int = 25,
     val color: Color
 )
-
-// ============================================
-// MAIN APP NAVIGATION
-// ============================================
-@Composable
-fun VitalityApp(dataStoreManager: DataStoreManager) {
-    var selectedTab by remember { mutableIntStateOf(0) }
-
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        containerColor = SurfaceLight,
-        bottomBar = {
-            VitalityBottomBar(selectedTab = selectedTab, onTabSelected = { selectedTab = it })
-        }
-    ) { innerPadding ->
-        Box(modifier = Modifier.padding(innerPadding)) {
-            when (selectedTab) {
-                0 -> HomeScreen(dataStoreManager)
-                1 -> ScreenPlaceholder("Insights Screen")
-                2 -> ScreenPlaceholder("Library Screen")
-                3 -> ScreenPlaceholder("Journal Screen")
-                4 -> ScreenPlaceholder("Profile Screen")
-            }
-        }
-    }
-}
-
-@Composable
-fun ScreenPlaceholder(name: String) {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text(name, style = MaterialTheme.typography.headlineMedium)
-    }
-}
-
-@Composable
-fun VitalityBottomBar(selectedTab: Int, onTabSelected: (Int) -> Unit) {
-    val tabs = listOf(
-        Triple("Home", Icons.Filled.Home, Icons.Outlined.Home),
-        Triple("Insights", Icons.Filled.Insights, Icons.Outlined.Insights),
-        Triple("Library", Icons.Filled.MenuBook, Icons.Outlined.MenuBook),
-        Triple("Journal", Icons.Filled.EditNote, Icons.Outlined.EditNote),
-        Triple("Profile", Icons.Filled.Person, Icons.Outlined.Person)
-    )
-
-    NavigationBar(containerColor = CardWhite, tonalElevation = 8.dp) {
-        tabs.forEachIndexed { index, (label, filled, outlined) ->
-            NavigationBarItem(
-                selected = selectedTab == index,
-                onClick = { onTabSelected(index) },
-                icon = { Icon(if (selectedTab == index) filled else outlined, label) },
-                label = { Text(label, fontSize = 11.sp) },
-                colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = VitalityPurple,
-                    indicatorColor = VitalityPurple.copy(alpha = 0.1f)
-                )
-            )
-        }
-    }
-}
 
 // ============================================
 // HOME SCREEN
@@ -161,7 +506,7 @@ fun HomeScreen(dataStoreManager: DataStoreManager) {
                         Text("Today's Vitality", color = Color.White.copy(0.8f), fontSize = 14.sp)
                         Row(verticalAlignment = Alignment.Bottom) {
                             Text("$totalScore", color = Color.White, fontSize = 64.sp, fontWeight = FontWeight.Bold)
-                            Text("/100", color = Color.White.copy(0.6f), fontSize = 24.sp, modifier = Modifier.padding(bottom = 12.dp))
+                            Text("/100", color = Color.White.copy(0.6f), fontSize = 20.sp, modifier = Modifier.padding(bottom = 12.dp))
                         }
                         LinearProgressIndicator(progress = { totalScore / 100f }, modifier = Modifier.width(180.dp).height(8.dp).clip(RoundedCornerShape(4.dp)), color = Color.White, trackColor = Color.White.copy(0.3f))
                     }
@@ -242,7 +587,7 @@ fun MetricCard(metric: MetricData, onScoreChange: (Int) -> Unit) {
             ),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = CardWhite),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(2.dp)
     ) {
         Row(modifier = Modifier.height(IntrinsicSize.Min)) {
             // Left Accent Color

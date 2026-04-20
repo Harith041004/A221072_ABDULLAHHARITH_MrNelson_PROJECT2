@@ -52,6 +52,9 @@ dependencies {
     // Lifecycle (for collectAsState)
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.2")
 
+    // Navigation
+    implementation(libs.androidx.navigation.compose)
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
