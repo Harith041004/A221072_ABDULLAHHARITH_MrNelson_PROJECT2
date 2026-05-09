@@ -13,19 +13,26 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.vitalityapp.ui.theme.PrimaryPurple
-import com.example.vitalityapp.ui.theme.SurfaceWhite
+import com.example.vitalityapp.ui.theme.*
 
 @Composable
-fun JournalScreen(viewModel: VitalityViewModel) {
-    var currentNote by remember { mutableStateOf("") }
-    val selectedMood by remember { mutableStateOf("") }
+fun JournalScreen(dataStoreManager: DataStoreManager, viewModel: VitalityViewModel) {
+    val currentNote by viewModel.journalNoteInput.collectAsStateWithLifecycle()
+    val selectedMood by viewModel.journalMoodInput.collectAsStateWithLifecycle()
     val entries by viewModel.journalEntries.collectAsStateWithLifecycle()
     val habits by viewModel.habits.collectAsStateWithLifecycle()
     val score by viewModel.dailyScore.collectAsStateWithLifecycle()
+    
+    val moods = listOf("😊 Happy", "😌 Calm", "😢 Sad", "😤 Stressed", "🥗 Good", "😴 Tired")
 
-    Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp)
+    ) {
         Text("Journal", fontSize = 28.sp, fontWeight = FontWeight.Bold)
+        Text("Track your daily reflections", fontSize = 14.sp, color = TextSecondary)
 
         // Progress Card
         Card(
@@ -38,9 +45,10 @@ fun JournalScreen(viewModel: VitalityViewModel) {
                     CircularProgressIndicator(
                         progress = { score / 100f },
                         color = Color.White,
-                        trackColor = Color.White.copy(alpha = 0.2f)
+                        trackColor = Color.White.copy(alpha = 0.2f),
+                        strokeWidth = 4.dp
                     )
-                    Text("$score", color = Color.White, fontWeight = FontWeight.Bold)
+                    Text("$score", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 }
                 Spacer(modifier = Modifier.width(16.dp))
                 Text("Daily Vitality Score", color = Color.White, fontSize = 18.sp)
@@ -48,49 +56,106 @@ fun JournalScreen(viewModel: VitalityViewModel) {
         }
 
         Text("Habit Tracker", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+        Spacer(modifier = Modifier.height(8.dp))
+        
         habits.forEach { habit ->
-            HabitEntryCard(habit) { newValue -> viewModel.updateHabitValue(habit.id, newValue) }
+            HabitEntryCard(habit) { newValue -> viewModel.updateHabitValue(habit.id, newValue, dataStoreManager) }
             Spacer(modifier = Modifier.height(8.dp))
         }
 
         Spacer(modifier = Modifier.height(16.dp))
         Text("Reflection", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+        
         Card(
             modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
             colors = CardDefaults.cardColors(containerColor = SurfaceWhite),
             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
+                // Mood selector
+                Text("How are you feeling?", fontSize = 12.sp, color = TextSecondary)
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    moods.forEach { mood ->
+                        FilterChip(
+                            selected = selectedMood == mood,
+                            onClick = { viewModel.updateJournalMoodInput(mood) },
+                            label = { Text(mood, fontSize = 12.sp) }
+                        )
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(12.dp))
+                
                 OutlinedTextField(
                     value = currentNote,
-                    onValueChange = { currentNote = it },
+                    onValueChange = { viewModel.updateJournalNoteInput(it) },
                     modifier = Modifier.fillMaxWidth().height(100.dp),
-                    label = { Text("How was your day?") }
+                    label = { Text("How was your day?") },
+                    shape = RoundedCornerShape(12.dp)
                 )
+                
                 Button(
-                    onClick = { viewModel.addJournalEntry(currentNote, selectedMood); currentNote = "" },
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
-                ) { Text("Save Entry") }
+                    onClick = { 
+                        if (currentNote.isNotBlank()) {
+                            viewModel.addJournalEntry(currentNote, selectedMood, dataStoreManager)
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryPurple)
+                ) { 
+                    Text("Save Entry") 
+                }
             }
         }
         
         Spacer(modifier = Modifier.height(16.dp))
         Text("Past Entries", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
-        entries.forEach { entry ->
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        if (entries.isEmpty()) {
             Card(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                 colors = CardDefaults.cardColors(containerColor = SurfaceWhite),
                 elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
             ) {
-                Column(modifier = Modifier.padding(12.dp)) {
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text(entry.date, fontSize = 12.sp, color = Color.Gray)
-                        Text(entry.mood)
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text("📝", fontSize = 32.sp)
+                    Text("No entries yet", fontSize = 14.sp, color = TextSecondary)
+                    Text("Write your first reflection above", fontSize = 12.sp, color = TextSecondary)
+                }
+            }
+        } else {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                entries.forEach { entry ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = SurfaceWhite),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text(entry.date, fontSize = 12.sp, color = Color.Gray)
+                                Text(entry.mood.ifBlank { "📝" }, fontSize = 14.sp)
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(entry.content, fontSize = 14.sp)
+                        }
                     }
-                    Text(entry.content)
                 }
             }
         }
+        Spacer(modifier = Modifier.height(24.dp))
     }
 }
 

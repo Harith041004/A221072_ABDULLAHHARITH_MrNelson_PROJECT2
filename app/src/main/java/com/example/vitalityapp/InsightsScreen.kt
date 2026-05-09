@@ -1,25 +1,43 @@
 package com.example.vitalityapp
 
-import androidx.compose.foundation.*
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.vitalityapp.ui.theme.*
 
 @Composable
-fun InsightsScreen() {
-    val weeklyData = listOf(60, 72, 65, 80, 75, 68, 82)
+fun InsightsScreen(viewModel: VitalityViewModel) {
+    val habits by viewModel.habits.collectAsStateWithLifecycle()
+    val dailyScore by viewModel.dailyScore.collectAsStateWithLifecycle()
+    
+    // Get habit values
+    val movementValue = habits.find { it.name.contains("Steps", ignoreCase = true) }?.let { 
+        ((it.value.toFloat() / it.goal.toFloat()) * 25).toInt().coerceIn(0, 25)
+    } ?: 17
+    val nutritionValue = habits.find { it.name.contains("Water", ignoreCase = true) }?.let {
+        ((it.value.toFloat() / it.goal.toFloat()) * 25).toInt().coerceIn(0, 25)
+    } ?: 21
+    val sleepValue = habits.find { it.name.contains("Meditation", ignoreCase = true) }?.let {
+        ((it.value.toFloat() / it.goal.toFloat()) * 25).toInt().coerceIn(0, 25)
+    } ?: 15
+    val moodValue = 19 // Default mood value
 
-    Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
+    val weeklyData = listOf(60, 72, 65, 80, 75, 68, dailyScore)
+
+    Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp).background(BackgroundLight)) {
         Text(text = "Insights", fontSize = 28.sp, fontWeight = FontWeight.Bold)
         Text(text = "Your progress this week", fontSize = 14.sp, color = TextSecondary)
 
@@ -34,7 +52,7 @@ fun InsightsScreen() {
             Column(modifier = Modifier.padding(20.dp)) {
                 Text("Weekly Average", color = Color.White.copy(alpha = 0.8f), fontSize = 14.sp)
                 Row(verticalAlignment = Alignment.Bottom) {
-                    Text("72", color = Color.White, fontSize = 48.sp, fontWeight = FontWeight.Bold)
+                    Text("${weeklyData.average().toInt()}", color = Color.White, fontSize = 48.sp, fontWeight = FontWeight.Bold)
                     Text("/100", color = Color.White.copy(alpha = 0.6f), fontSize = 20.sp, modifier = Modifier.padding(bottom = 8.dp, start = 4.dp))
                     Spacer(modifier = Modifier.weight(1f))
                     Column(horizontalAlignment = Alignment.End) {
@@ -66,10 +84,10 @@ fun InsightsScreen() {
         Text("Metric Breakdown", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
         Spacer(modifier = Modifier.height(12.dp))
         
-        InsightMetricCard("🏃 Movement", 17, 25, "+3 from last week", VitalityBlue)
-        InsightMetricCard("🥗 Nutrition", 21, 25, "+2 from last week", VitalityTeal)
-        InsightMetricCard("😴 Sleep", 15, 25, "Same as last week", PrimaryPurple)
-        InsightMetricCard("🧘 Mood", 19, 25, "+3 from last week", VitalityPink)
+        InsightMetricCard("🏃 Movement", movementValue, 25, "+3 from last week", VitalityBlue)
+        InsightMetricCard("🥗 Nutrition", nutritionValue, 25, "+2 from last week", VitalityTeal)
+        InsightMetricCard("😴 Sleep", sleepValue, 25, "Same as last week", PrimaryPurple)
+        InsightMetricCard("🧘 Mood", moodValue, 25, "+3 from last week", VitalityPink)
     }
 }
 
@@ -95,3 +113,5 @@ fun InsightMetricCard(label: String, score: Int, max: Int, trend: String, color:
         }
     }
 }
+
+private fun List<Int>.average(): Double = sum().toDouble() / size

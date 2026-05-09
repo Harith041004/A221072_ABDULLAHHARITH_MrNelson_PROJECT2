@@ -15,10 +15,13 @@ data class VitalityData(
     val note: String,
     val goal: String,
     val isGoalSubmitted: Boolean,
-    val isNoteSubmitted: Boolean
+    val isNoteSubmitted: Boolean,
+    val lastActivityDate: Long,
+    val currentStreak: Int,
+    val userName: String
 )
 
-private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "vitality_prefs")
+private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "vitalityprefs")
 
 class DataStoreManager(context: Context) {
     private val dataStore = context.dataStore
@@ -30,8 +33,11 @@ class DataStoreManager(context: Context) {
         val MOOD = intPreferencesKey("mood")
         val NOTE = stringPreferencesKey("note")
         val GOAL = stringPreferencesKey("goal")
-        val IS_GOAL_SUBMITTED = booleanPreferencesKey("is_goal_submitted")
-        val IS_NOTE_SUBMITTED = booleanPreferencesKey("is_note_submitted")
+        val ISGOALSUBMITTED = booleanPreferencesKey("isgoalsubmitted")
+        val ISNOTESUBMITTED = booleanPreferencesKey("isnotesubmitted")
+        val LAST_ACTIVITY_DATE = longPreferencesKey("last_activity_date")
+        val CURRENT_STREAK = intPreferencesKey("current_streak")
+        val USER_NAME = stringPreferencesKey("user_name")
     }
 
     suspend fun saveSettings(data: VitalityData) {
@@ -42,8 +48,11 @@ class DataStoreManager(context: Context) {
             preferences[MOOD] = data.mood
             preferences[NOTE] = data.note
             preferences[GOAL] = data.goal
-            preferences[IS_GOAL_SUBMITTED] = data.isGoalSubmitted
-            preferences[IS_NOTE_SUBMITTED] = data.isNoteSubmitted
+            preferences[ISGOALSUBMITTED] = data.isGoalSubmitted
+            preferences[ISNOTESUBMITTED] = data.isNoteSubmitted
+            preferences[LAST_ACTIVITY_DATE] = data.lastActivityDate
+            preferences[CURRENT_STREAK] = data.currentStreak
+            preferences[USER_NAME] = data.userName
         }
     }
 
@@ -55,8 +64,11 @@ class DataStoreManager(context: Context) {
             mood = preferences[MOOD] ?: 18,
             note = preferences[NOTE] ?: "",
             goal = preferences[GOAL] ?: "",
-            isGoalSubmitted = preferences[IS_GOAL_SUBMITTED] ?: false,
-            isNoteSubmitted = preferences[IS_NOTE_SUBMITTED] ?: false
+            isGoalSubmitted = preferences[ISGOALSUBMITTED] ?: false,
+            isNoteSubmitted = preferences[ISNOTESUBMITTED] ?: false,
+            lastActivityDate = preferences[LAST_ACTIVITY_DATE] ?: 0L,
+            currentStreak = preferences[CURRENT_STREAK] ?: 0,
+            userName = preferences[USER_NAME] ?: "User"
         )
     }
 }

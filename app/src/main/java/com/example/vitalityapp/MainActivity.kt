@@ -14,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
@@ -27,6 +28,7 @@ sealed class Screen(val route: String) {
     object Insights : Screen("insights")
     object Journal : Screen("journal")
     object Profile : Screen("profile")
+    object Goals : Screen("goals")
 }
 
 class MainActivity : ComponentActivity() {
@@ -47,6 +49,15 @@ fun VitalityApp(dataStoreManager: DataStoreManager, viewModel: VitalityViewModel
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
+    
+    // Load initial data from DataStore into ViewModel
+    val savedData by dataStoreManager.getSettings.collectAsStateWithLifecycle(initialValue = null)
+    
+    LaunchedEffect(savedData) {
+        savedData?.let {
+            viewModel.initializeFromDataStore(it, dataStoreManager)
+        }
+    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -66,10 +77,11 @@ fun VitalityApp(dataStoreManager: DataStoreManager, viewModel: VitalityViewModel
             startDestination = Screen.Home.route,
             modifier = Modifier.padding(innerPadding)
         ) {
-            composable(Screen.Home.route) { HomeScreen(dataStoreManager) }
-            composable(Screen.Insights.route) { InsightsScreen() }
-            composable(Screen.Journal.route) { JournalScreen(viewModel) }
-            composable(Screen.Profile.route) { ProfileScreen(viewModel) }
+            composable(Screen.Home.route) { HomeScreen(dataStoreManager, viewModel) }
+            composable(Screen.Insights.route) { InsightsScreen(viewModel) }
+            composable(Screen.Journal.route) { JournalScreen(dataStoreManager, viewModel) }
+            composable(Screen.Profile.route) { ProfileScreen(dataStoreManager, viewModel) }
+            composable(Screen.Goals.route) { GoalsScreen(viewModel) }
         }
     }
 }
@@ -80,6 +92,7 @@ fun VitalityBottomBar(currentRoute: String?, onNavigate: (String) -> Unit) {
         Triple("Home", Icons.Default.Home, Screen.Home.route),
         Triple("Insights", Icons.Default.InsertChart, Screen.Insights.route),
         Triple("Journal", Icons.AutoMirrored.Filled.MenuBook, Screen.Journal.route),
+        Triple("Goals", Icons.Default.TrackChanges, Screen.Goals.route),
         Triple("Profile", Icons.Default.Person, Screen.Profile.route)
     )
 
