@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.DirectionsRun
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -157,28 +158,33 @@ fun GoalCard(goal: HealthGoal, viewModel: VitalityViewModel) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // Category Icon
+                val categoryColor = when (goal.category.lowercase()) {
+                    "movement" -> VitalityBlue
+                    "nutrition" -> VitalityTeal
+                    "sleep" -> VitalityPurple
+                    "mood" -> VitalityPink
+                    else -> VitalityOrange
+                }
+                val categoryIcon = when (goal.category.lowercase()) {
+                    "movement" -> Icons.AutoMirrored.Filled.DirectionsRun
+                    "nutrition" -> Icons.Default.Restaurant
+                    "sleep" -> Icons.Default.Bedtime
+                    "mood" -> Icons.Default.SelfImprovement
+                    else -> Icons.Default.TrackChanges
+                }
+
                 Box(
                     modifier = Modifier
                         .size(48.dp)
                         .clip(CircleShape)
-                        .background(
-                            when (goal.category.lowercase()) {
-                                "movement" -> VitalityBlue.copy(alpha = 0.1f)
-                                "nutrition" -> VitalityTeal.copy(alpha = 0.1f)
-                                "sleep" -> VitalityPurple.copy(alpha = 0.1f)
-                                else -> VitalityOrange.copy(alpha = 0.1f)
-                            }
-                        ),
+                        .background(categoryColor.copy(alpha = 0.1f)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        when (goal.category.lowercase()) {
-                            "movement" -> "🏃"
-                            "nutrition" -> "🥗"
-                            "sleep" -> "😴"
-                            else -> "🎯"
-                        },
-                        fontSize = 24.sp
+                    Icon(
+                        imageVector = categoryIcon,
+                        contentDescription = null,
+                        tint = categoryColor,
+                        modifier = Modifier.size(24.dp)
                     )
                 }
                 

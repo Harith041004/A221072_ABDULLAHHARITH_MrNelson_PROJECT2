@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.DirectionsRun
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -12,12 +13,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.vitalityapp.ui.theme.*
+import java.util.*
 
 @Composable
 fun ProfileScreen(dataStoreManager: DataStoreManager, viewModel: VitalityViewModel) {
@@ -78,9 +81,9 @@ fun ProfileScreen(dataStoreManager: DataStoreManager, viewModel: VitalityViewMod
                 
                 Spacer(modifier = Modifier.height(24.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                    StatItem("🔥", profile.streak, "Day Streak")
-                    StatItem("📊", dailyScore.toString(), "Avg Score")
-                    StatItem("🏆", "$completedGoalsCount/$totalGoalsCount", "Goals")
+                    StatItem(Icons.Default.LocalFireDepartment, profile.streak, "Streak", VitalityOrange)
+                    StatItem(Icons.Default.BarChart, dailyScore.toString(), "Daily Score", VitalityBlue)
+                    StatItem(Icons.Default.EmojiEvents, "$completedGoalsCount/$totalGoalsCount", "Goals", VitalityTeal)
                 }
             }
         }
@@ -97,22 +100,10 @@ fun ProfileScreen(dataStoreManager: DataStoreManager, viewModel: VitalityViewMod
             }
             Spacer(modifier = Modifier.height(12.dp))
         }
-        
-        Spacer(modifier = Modifier.height(16.dp))
-        Text("Settings", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
-        Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(SurfaceWhite)) {
-            Column {
-                SettingsItem("🔔", "Notifications", "Reminders and alerts")
-                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                SettingsItem("🎨", "Appearance", "Theme and display")
-                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                SettingsItem("🎯", "Goals", "Manage your health goals")
-            }
-        }
     }
 }
 
-data class Achievement(val emoji: String, val title: String, val isUnlocked: Boolean)
+data class Achievement(val icon: ImageVector, val title: String, val isUnlocked: Boolean)
 
 @Composable
 fun RowScope.AchievementGridItem(achievement: Achievement) {
@@ -122,44 +113,36 @@ fun RowScope.AchievementGridItem(achievement: Achievement) {
         elevation = CardDefaults.cardElevation(if (achievement.isUnlocked) 2.dp else 0.dp)
     ) {
         Column(modifier = Modifier.fillMaxSize().padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-            Text(if (achievement.isUnlocked) achievement.emoji else "🔒", fontSize = 28.sp)
-            Text(achievement.title, fontSize = 10.sp, textAlign = TextAlign.Center)
+            Icon(
+                imageVector = if (achievement.isUnlocked) achievement.icon else Icons.Default.Lock, 
+                contentDescription = achievement.title,
+                tint = if (achievement.isUnlocked) VitalityPurple else Color.Gray,
+                modifier = Modifier.size(32.dp)
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(achievement.title, fontSize = 10.sp, textAlign = TextAlign.Center, fontWeight = FontWeight.Medium)
         }
     }
 }
 
 @Composable
-fun StatItem(emoji: String, value: String, label: String) {
+fun StatItem(icon: ImageVector, value: String, label: String, color: Color) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(emoji, fontSize = 24.sp)
+        Icon(icon, null, tint = color, modifier = Modifier.size(24.dp))
         Text(value, fontWeight = FontWeight.Bold, fontSize = 18.sp)
         Text(label, fontSize = 12.sp, color = TextSecondary)
-    }
-}
-
-@Composable
-fun SettingsItem(emoji: String, title: String, subtitle: String) {
-    Row(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(modifier = Modifier.size(40.dp).background(Color.Gray.copy(0.1f), CircleShape), contentAlignment = Alignment.Center) {
-            Text(emoji)
-        }
-        Spacer(modifier = Modifier.width(16.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(title, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-            Text(subtitle, fontSize = 12.sp, color = TextSecondary)
-        }
-        Icon(Icons.Default.ChevronRight, null, tint = TextSecondary)
     }
 }
 
 fun getAchievements(healthGoals: List<HealthGoal>): List<Achievement> {
     val goalAchievements = healthGoals.map { goal ->
         Achievement(
-            emoji = when (goal.category.lowercase()) {
-                "movement" -> "🏃"
-                "nutrition" -> "🥗"
-                "sleep" -> "😴"
-                else -> "🎯"
+            icon = when (goal.category.lowercase()) {
+                "movement" -> Icons.AutoMirrored.Filled.DirectionsRun
+                "nutrition" -> Icons.Default.Restaurant
+                "sleep" -> Icons.Default.Bedtime
+                "mood" -> Icons.Default.SelfImprovement
+                else -> Icons.Default.TrackChanges
             },
             title = goal.title.take(12),
             isUnlocked = goal.isAchieved
@@ -167,11 +150,11 @@ fun getAchievements(healthGoals: List<HealthGoal>): List<Achievement> {
     }
     
     return listOf(
-        Achievement("🏆", "Early Bird", true),
-        Achievement("💧", "Hydration Pro", true),
-        Achievement("🧘", "Zen Master", true),
-        Achievement("🔥", "7 Day Streak", true),
-        Achievement("🥗", "Clean Eater", false),
-        Achievement("😴", "Deep Sleeper", false)
+        Achievement(Icons.Default.WbTwilight, "Early Bird", true),
+        Achievement(Icons.Default.WaterDrop, "Hydration Pro", true),
+        Achievement(Icons.Default.SelfImprovement, "Zen Master", true),
+        Achievement(Icons.Default.LocalFireDepartment, "7 Day Streak", true),
+        Achievement(Icons.Default.Restaurant, "Clean Eater", false),
+        Achievement(Icons.Default.Bedtime, "Deep Sleeper", false)
     ) + goalAchievements.take(4)
 }

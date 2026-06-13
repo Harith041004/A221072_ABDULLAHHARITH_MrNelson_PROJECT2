@@ -1,12 +1,21 @@
 package com.example.vitalityapp
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.DirectionsRun
+import androidx.compose.material.icons.filled.Bedtime
+import androidx.compose.material.icons.filled.Restaurant
+import androidx.compose.material.icons.filled.SelfImprovement
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Query
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -21,7 +30,7 @@ data class JournalEntry(
 data class Habit(
     val id: String,
     val name: String,
-    val emoji: String,
+    val icon: ImageVector,
     val value: Int,
     val goal: Int,
     val unit: String,
@@ -64,6 +73,16 @@ class VitalityViewModel : ViewModel() {
     private val _dailyScore = MutableStateFlow(0)
     val dailyScore: StateFlow<Int> = _dailyScore.asStateFlow()
 
+    // --- Community & API States ---
+    private val _dailyQuote = MutableStateFlow<QuoteDto?>(null)
+    val dailyQuote: StateFlow<QuoteDto?> = _dailyQuote.asStateFlow()
+
+    private val _communityPosts = MutableStateFlow<List<CommunityPost>>(emptyList())
+    val communityPosts: StateFlow<List<CommunityPost>> = _communityPosts.asStateFlow()
+
+    private val api = ZenQuotesApi.create()
+    private val firestore = FirebaseFirestore.getInstance()
+
     // --- Hoisted UI States (Configuration Change Resilience) ---
 
     // Home Screen
@@ -98,19 +117,27 @@ class VitalityViewModel : ViewModel() {
     private val _editedName = MutableStateFlow("")
     val editedName = _editedName.asStateFlow()
 
+    // Community Screen
+    private val _communityMessageInput = MutableStateFlow("")
+    val communityMessageInput = _communityMessageInput.asStateFlow()
+
     private var currentData: VitalityData? = null
     private var isInitialized = false
 
     init {
         loadSampleData()
         updateDailyScore()
+        
+        // Fetch API and Firebase data when ViewModel starts
+        fetchDailyQuote()
+        listenToCommunityPosts()
     }
 
     private fun getDefaultHabits() = listOf(
-        Habit("movement", "Movement", "🏃", 15, 25, "pts", Color(0xFF2196F3)),
-        Habit("nutrition", "Nutrition", "🥗", 20, 25, "pts", Color(0xFF009688)),
-        Habit("sleep", "Sleep", "😴", 12, 25, "pts", Color(0xFF6750A4)),
-        Habit("mood", "Mood", "🧘", 18, 25, "pts", Color(0xFFE91E63))
+        Habit("movement", "Movement", Icons.AutoMirrored.Filled.DirectionsRun, 15, 25, "pts", Color(0xFF2196F3)),
+        Habit("nutrition", "Nutrition", Icons.Default.Restaurant, 20, 25, "pts", Color(0xFF009688)),
+        Habit("sleep", "Sleep", Icons.Default.Bedtime, 12, 25, "pts", Color(0xFF6750A4)),
+        Habit("mood", "Mood", Icons.Default.SelfImprovement, 18, 25, "pts", Color(0xFFE91E63))
     )
 
     private fun loadSampleData() {
@@ -120,6 +147,56 @@ class VitalityViewModel : ViewModel() {
         )
     }
 
+    // --- Community & API Actions ---
+
+    // Pillar: Data from Internet (Retrofit)
+    private fun fetchDailyQuote() {
+        viewModelScope.launch {
+            try {
+                val quotes = api.getRandomQuote()
+                if (quotes.isNotEmpty()) {
+                    _dailyQuote.value = quotes.first()
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                _dailyQuote.value = QuoteDto("Stay positive, work hard, make it happen.", "Vitality") // Fallback
+            }
+        }
+    }
+
+    // Pillar: Cloud Integration (Firebase Read)
+    private fun listenToCommunityPosts() {
+        firestore.collection("community_posts")
+            .orderBy("timestamp", Query.Direction.DESCENDING)
+            .limit(20)
+            .addSnapshotListener { snapshot, e ->
+                if (e != null || snapshot == null) return@addSnapshotListener
+                
+                val posts = snapshot.documents.mapNotNull { it.toObject(CommunityPost::class.java) }
+                _communityPosts.value = posts
+            }
+    }
+
+    fun updateCommunityMessageInput(input: String) {
+        _communityMessageInput.value = input
+    }
+
+    // Pillar: Cloud Integration (Firebase Write)
+    fun publishToFirebase(message: String) {
+        if (message.isBlank()) return
+        
+        val currentUserName = profile.value.name // Gets the user's name from your existing profile
+        val newPost = CommunityPost(
+            id = UUID.randomUUID().toString(),
+            userName = currentUserName,
+            message = message
+        )
+
+        firestore.collection("community_posts")
+            .document(newPost.id)
+            .set(newPost)
+    }
+
     // --- Synchronization & Streak Logic ---
 
     fun initializeFromDataStore(data: VitalityData, dataStoreManager: DataStoreManager) {
@@ -127,10 +204,10 @@ class VitalityViewModel : ViewModel() {
         if (!isInitialized) {
             isInitialized = true
             _habits.value = listOf(
-                Habit("movement", "Movement", "🏃", data.movement, 25, "pts", Color(0xFF2196F3)),
-                Habit("nutrition", "Nutrition", "🥗", data.nutrition, 25, "pts", Color(0xFF009688)),
-                Habit("sleep", "Sleep", "😴", data.sleep, 25, "pts", Color(0xFF6750A4)),
-                Habit("mood", "Mood", "🧘", data.mood, 25, "pts", Color(0xFFE91E63))
+                Habit("movement", "Movement", Icons.AutoMirrored.Filled.DirectionsRun, data.movement, 25, "pts", Color(0xFF2196F3)),
+                Habit("nutrition", "Nutrition", Icons.Default.Restaurant, data.nutrition, 25, "pts", Color(0xFF009688)),
+                Habit("sleep", "Sleep", Icons.Default.Bedtime, data.sleep, 25, "pts", Color(0xFF6750A4)),
+                Habit("mood", "Mood", Icons.Default.SelfImprovement, data.mood, 25, "pts", Color(0xFFE91E63))
             )
             updateDailyScore()
             updateRelatedGoals()

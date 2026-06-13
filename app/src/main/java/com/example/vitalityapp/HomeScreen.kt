@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -25,7 +26,13 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 @Composable
-fun HomeScreen(dataStoreManager: DataStoreManager, viewModel: VitalityViewModel) {
+fun HomeScreen(
+    dataStoreManager: DataStoreManager, 
+    viewModel: VitalityViewModel,
+    onNavigateToInsights: () -> Unit,
+    onNavigateToGoals: () -> Unit,
+    onNavigateToProfile: () -> Unit
+) {
     val savedData by dataStoreManager.getSettings.collectAsStateWithLifecycle(
         initialValue = VitalityData(15, 20, 12, 18, "", "", false, false, 0L, 0, "User")
     )
@@ -42,10 +49,40 @@ fun HomeScreen(dataStoreManager: DataStoreManager, viewModel: VitalityViewModel)
         // HD Gradient Header
         Box(modifier = Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(VitalityPurple, VitalityPurpleLight))).padding(24.dp)) {
             Column {
-                Text("Good ${getGreeting()}! 👋", color = Color.White.copy(0.9f), fontSize = 16.sp)
-                Text(todayDate, color = Color.White.copy(0.7f), fontSize = 14.sp)
+                // --- TOP APP BAR ---
+                Row(
+                    modifier = Modifier.fillMaxWidth(), 
+                    horizontalArrangement = Arrangement.SpaceBetween, 
+                    verticalAlignment = Alignment.Top
+                ) {
+                    // Left side: Greeting
+                    Column {
+                        Text("Good ${getGreeting()}! 👋", color = Color.White.copy(0.9f), fontSize = 16.sp)
+                        Text(todayDate, color = Color.White.copy(0.7f), fontSize = 14.sp)
+                    }
+                    
+                    // Right side: Interactive Top Icons
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        IconButton(onClick = onNavigateToInsights, modifier = Modifier.size(32.dp)) {
+                            Icon(Icons.Default.InsertChart, contentDescription = "Insights", tint = Color.White)
+                        }
+                        IconButton(onClick = onNavigateToGoals, modifier = Modifier.size(32.dp)) {
+                            Icon(Icons.Default.TrackChanges, contentDescription = "Goals", tint = Color.White)
+                        }
+                        IconButton(onClick = onNavigateToProfile, modifier = Modifier.size(32.dp)) {
+                            Icon(Icons.Default.Person, contentDescription = "Profile", tint = Color.White)
+                        }
+                    }
+                }
+                
                 Spacer(modifier = Modifier.height(24.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                
+                // --- Score Display ---
+                Row(
+                    modifier = Modifier.fillMaxWidth().clickable { onNavigateToInsights() }, 
+                    horizontalArrangement = Arrangement.SpaceBetween, 
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Column {
                         Text("Today's Vitality", color = Color.White.copy(0.8f), fontSize = 14.sp)
                         Row(verticalAlignment = Alignment.Bottom) {
@@ -81,12 +118,21 @@ fun HomeScreen(dataStoreManager: DataStoreManager, viewModel: VitalityViewModel)
             }
         }
 
-        Text("Daily Metrics", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("Daily Metrics", fontWeight = FontWeight.SemiBold)
+            TextButton(onClick = onNavigateToGoals) {
+                Text("View Goals", color = PrimaryPurple, fontWeight = FontWeight.Bold)
+            }
+        }
         
         // Metrics from ViewModel habits
         Column(modifier = Modifier.padding(horizontal = 16.dp)) {
             habits.forEach { habit ->
-                MetricCard(habit.name, habit.emoji, habit.value, habit.goal, habit.color) { newValue ->
+                MetricCard(habit.name, habit.icon, habit.value, habit.goal, habit.color) { newValue ->
                     viewModel.updateHabitValue(habit.id, newValue, dataStoreManager)
                 }
             }
@@ -114,7 +160,7 @@ fun HomeScreen(dataStoreManager: DataStoreManager, viewModel: VitalityViewModel)
 }
 
 @Composable
-fun MetricCard(title: String, emoji: String, score: Int, goal: Int, color: Color, onValueChange: (Int) -> Unit) {
+fun MetricCard(title: String, icon: ImageVector, score: Int, goal: Int, color: Color, onValueChange: (Int) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     Card(
         modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp).clickable { expanded = !expanded }
@@ -125,7 +171,9 @@ fun MetricCard(title: String, emoji: String, score: Int, goal: Int, color: Color
             Box(modifier = Modifier.fillMaxHeight().width(6.dp).background(color))
             Column(modifier = Modifier.padding(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(modifier = Modifier.size(40.dp).background(color.copy(0.1f), CircleShape), contentAlignment = Alignment.Center) { Text(emoji) }
+                    Box(modifier = Modifier.size(40.dp).background(color.copy(0.1f), CircleShape), contentAlignment = Alignment.Center) { 
+                        Icon(imageVector = icon, contentDescription = null, tint = color, modifier = Modifier.size(24.dp))
+                    }
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(title, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                     Text("$score/$goal", color = color, fontWeight = FontWeight.Bold)

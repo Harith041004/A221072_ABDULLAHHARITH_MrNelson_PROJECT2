@@ -9,6 +9,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -169,7 +170,9 @@ fun HabitEntryCard(habit: Habit, onValueChange: (Int) -> Unit) {
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(habit.emoji, fontSize = 24.sp)
+                Box(modifier = Modifier.size(40.dp).background(habit.color.copy(0.1f), CircleShape), contentAlignment = Alignment.Center) {
+                    Icon(imageVector = habit.icon, contentDescription = null, tint = habit.color, modifier = Modifier.size(24.dp))
+                }
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(habit.name, fontWeight = FontWeight.Bold)

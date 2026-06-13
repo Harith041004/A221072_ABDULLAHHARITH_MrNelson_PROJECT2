@@ -6,12 +6,17 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.DirectionsRun
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
+import androidx.compose.material.icons.filled.Bedtime
+import androidx.compose.material.icons.filled.Restaurant
+import androidx.compose.material.icons.filled.SelfImprovement
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -24,16 +29,10 @@ fun InsightsScreen(viewModel: VitalityViewModel) {
     val dailyScore by viewModel.dailyScore.collectAsStateWithLifecycle()
     
     // Get habit values
-    val movementValue = habits.find { it.name.contains("Steps", ignoreCase = true) }?.let { 
-        ((it.value.toFloat() / it.goal.toFloat()) * 25).toInt().coerceIn(0, 25)
-    } ?: 17
-    val nutritionValue = habits.find { it.name.contains("Water", ignoreCase = true) }?.let {
-        ((it.value.toFloat() / it.goal.toFloat()) * 25).toInt().coerceIn(0, 25)
-    } ?: 21
-    val sleepValue = habits.find { it.name.contains("Meditation", ignoreCase = true) }?.let {
-        ((it.value.toFloat() / it.goal.toFloat()) * 25).toInt().coerceIn(0, 25)
-    } ?: 15
-    val moodValue = 19 // Default mood value
+    val movementValue = habits.find { it.id == "movement" }?.value ?: 17
+    val nutritionValue = habits.find { it.id == "nutrition" }?.value ?: 21
+    val sleepValue = habits.find { it.id == "sleep" }?.value ?: 15
+    val moodValue = habits.find { it.id == "mood" }?.value ?: 18
 
     val weeklyData = listOf(60, 72, 65, 80, 75, 68, dailyScore)
 
@@ -84,15 +83,15 @@ fun InsightsScreen(viewModel: VitalityViewModel) {
         Text("Metric Breakdown", fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
         Spacer(modifier = Modifier.height(12.dp))
         
-        InsightMetricCard("🏃 Movement", movementValue, 25, "+3 from last week", VitalityBlue)
-        InsightMetricCard("🥗 Nutrition", nutritionValue, 25, "+2 from last week", VitalityTeal)
-        InsightMetricCard("😴 Sleep", sleepValue, 25, "Same as last week", PrimaryPurple)
-        InsightMetricCard("🧘 Mood", moodValue, 25, "+3 from last week", VitalityPink)
+        InsightMetricCard("Movement", Icons.AutoMirrored.Filled.DirectionsRun, movementValue, 25, "+3 from last week", VitalityBlue)
+        InsightMetricCard("Nutrition", Icons.Default.Restaurant, nutritionValue, 25, "+2 from last week", VitalityTeal)
+        InsightMetricCard("Sleep", Icons.Default.Bedtime, sleepValue, 25, "Same as last week", PrimaryPurple)
+        InsightMetricCard("Mood", Icons.Default.SelfImprovement, moodValue, 25, "+3 from last week", VitalityPink)
     }
 }
 
 @Composable
-fun InsightMetricCard(label: String, score: Int, max: Int, trend: String, color: Color) {
+fun InsightMetricCard(title: String, icon: ImageVector, score: Int, max: Int, trend: String, color: Color) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -105,8 +104,12 @@ fun InsightMetricCard(label: String, score: Int, max: Int, trend: String, color:
             modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            Box(modifier = Modifier.size(40.dp).background(color.copy(0.1f), RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
+                Icon(imageVector = icon, contentDescription = null, tint = color, modifier = Modifier.size(24.dp))
+            }
+            Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(label, fontWeight = FontWeight.Bold)
+                Text(title, fontWeight = FontWeight.Bold)
                 Text(trend, fontSize = 12.sp, color = TextSecondary)
             }
             Text("$score/$max", fontWeight = FontWeight.Bold, color = color, fontSize = 18.sp)
