@@ -65,7 +65,7 @@ Expanding to a complete 7-screen flow, the app provides a platform where users c
 ### SDG 3 – Good Health and Well-being
 This application encourages a holistic approach to health by making habit tracking accessible and intentional. By bridging physical activity with mental reflection, it promotes long-term wellness for the Malaysian community.
 
-=======
+
 ## 🌍 SDG Alignment: SDG 3 – Good Health and Well-being
 This application encourages a holistic approach to health by making habit tracking accessible and intentional. By bridging physical activity with mental reflection and community support, it promotes long-term wellness for the Malaysian community.
 
